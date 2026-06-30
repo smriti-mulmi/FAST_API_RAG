@@ -14,25 +14,50 @@ from app.services import rag_service
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 
-@router.post("/upload", status_code=201)
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
 def upload(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files supported")
+    # Supported file extensions
+    allowed_extensions = (
+        ".pdf",
+        ".docx",
+        ".pptx",
+        ".txt",
+        ".csv",
+    )
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+    if not file.filename.lower().endswith(allowed_extensions):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Supported files: PDF, DOCX, PPTX, TXT, CSV",
+        )
+
+    # Preserve uploaded file extension
+    extension = os.path.splitext(file.filename)[1].lower()
+
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=extension,
+    ) as tmp:
         shutil.copyfileobj(file.file, tmp)
         tmp_path = tmp.name
 
     try:
-        count = rag_service.upload_pdf(db, file.filename, tmp_path)
+        count = rag_service.upload_document(
+            db=db,
+            filename=file.filename,
+            file_path=tmp_path,
+        )
     finally:
         os.unlink(tmp_path)
 
-    return {"filename": file.filename, "chunks_stored": count}
+    return {
+        "filename": file.filename,
+        "chunks_stored": count,
+    }
 
 
 @router.get("/search", response_model=SearchResponse)

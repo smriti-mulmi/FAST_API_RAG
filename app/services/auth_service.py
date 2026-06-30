@@ -14,7 +14,7 @@ def register_user(db: Session, payload: UserCreate) -> User:
     if get_user_by_email(db, payload.email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-    user = User(email=payload.email, hashed_password=hash_password(payload.password))
+    user = User(email=payload.email, hashed_password=hash_password(payload.password, role = payload.role))
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -29,4 +29,4 @@ def login_user(db: Session, email: str, password: str) -> str:
             detail="Invalid credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return create_access_token({"sub": user.email})
+    return create_access_token({"sub": user.email, 'role':user.role})
