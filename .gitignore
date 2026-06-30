@@ -1,0 +1,6 @@
+myfastapienv/
+__pycache__/
+*.pyc
+.env
+alembic/versions/*.py
+venv
